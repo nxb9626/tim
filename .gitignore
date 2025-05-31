@@ -1,2 +1,5 @@
 db/*
 cache/*
+target/
+tinkering
+.DS_Store

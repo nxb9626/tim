@@ -1,0 +1,9 @@
+[package]
+name = "tim"
+version = "0.0.2"
+edition = "2024"
+
+[dependencies]
+storage = { path = "crates/storage" }
+gui = { path = "crates/gui" }
+tokio = { version = "1.45.0", features = ["full"] }
