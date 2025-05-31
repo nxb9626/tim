@@ -81,7 +81,6 @@ pub enum PosOrientation {
     Center,
 }
 
-
 const WIDTH: u32 = 800;
 const HEIGHT: u32 = 600;
 
@@ -103,17 +102,6 @@ pub fn run() -> Result<(), ()> {
 
     let mut prev_buttons = HashSet::new();
     let mut start_timestamp = Utc::now();
-    let mut sq2 = Square {
-        color: 1,
-        size: 10,
-        hollow: true,
-        pos: Position {
-            x: WIDTH.div_ceil(2) as i32,
-            y: HEIGHT.div_ceil(2) as i32,
-            relative: PosOrientation::Center,
-        },
-    };
-
     let mut bg = Square {
         color: 2,
         size: WIDTH,
@@ -136,7 +124,6 @@ pub fn run() -> Result<(), ()> {
         },
     };
 
-    let objects: Vec<Box<&dyn Draw>> = vec![Box::new(&bg), Box::new(&sq2), Box::new(&rct)];
 
     'running: loop {
         for event in events.poll_iter() {
@@ -177,7 +164,24 @@ pub fn run() -> Result<(), ()> {
         }
         prev_buttons = buttons;
 
-        sq2.size = ((Utc::now() - start_timestamp).num_milliseconds()).wrapping_div(100) as u32;
+        let mut objects: Vec<Box<&dyn Draw>> = vec![Box::new(&bg)];
+
+        let sq2 = Square {
+            color: 1,
+            size: ((Utc::now() - start_timestamp).num_milliseconds()).wrapping_div(100) as u32,
+            hollow: true,
+            pos: Position {
+                x: WIDTH.div_ceil(2) as i32,
+                y: HEIGHT.div_ceil(2) as i32,
+                relative: PosOrientation::Center,
+            },
+        };
+
+        match objects.get_mut(1) {
+            Some(a) => *a = Box::new(&sq2),
+            None => objects.push(Box::new(&sq2)),
+        };
+
 
         objects.iter().for_each(|o| {
             o.draw(&mut view);
@@ -187,7 +191,7 @@ pub fn run() -> Result<(), ()> {
             break 'running;
         };
 
-        // std::thread::sleep(Duration::from_millis(50));
+        std::thread::sleep(Duration::from_millis(50));
     }
 
     Ok(())
