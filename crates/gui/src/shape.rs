@@ -5,7 +5,7 @@ use crate::{Color, Draw, Position, View};
 #[derive(Debug)]
 pub struct Square {
     pub color: Color,
-    pub size: u32,
+    pub size: usize,
     pub pos: Position,
     pub hollow: bool,
 }

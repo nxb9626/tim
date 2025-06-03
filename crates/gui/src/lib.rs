@@ -27,6 +27,8 @@ pub enum Signal {
     Quit,
 }
 
+pub struct Object;
+
 // any objects that need to be drawn need to be given this
 pub trait Draw {
     fn draw(&self, target: &mut View);

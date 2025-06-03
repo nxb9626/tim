@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use gui::{
     Color, Draw, HEIGHT, PosOrientation, Position, Signal, WIDTH, input,
-    shape::{Pixel, Square},
+    shape::{Pixel, Rectangle, Square},
 };
 use tokio::{sync::Mutex, task::yield_now};
 
@@ -26,25 +26,66 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
 struct LayerTracker {
     id: usize,
 }
+
 impl LayerTracker {
     fn new_layer(&mut self) -> usize {
         self.id += 1;
         return self.id;
     }
 }
+
+pub trait Phys {
+    fn update_position(&mut self, pos: Position);
+    fn get_position(&mut self) -> Position;
+    fn has_gravity(&self) -> bool;
+}
+
+pub struct Crate {
+    pos: Position,
+    size: usize,
+}
+
+impl Draw for Crate {
+    fn draw(&self, target: &mut gui::View) {
+        Square {
+            color: Color::WHITE,
+            size: self.size,
+            pos: self.pos,
+            hollow: false,
+        }
+        .draw(target);
+    }
+}
+
+impl Phys for Crate {
+    fn update_position(&mut self, pos: Position) {
+        self.pos = pos
+    }
+
+    fn has_gravity(&self) -> bool {
+        true
+    }
+
+    fn get_position(&mut self) -> Position {
+        self.pos
+    }
+}
+
 pub async fn physics(objects: Arc<Mutex<HashMap<usize, Vec<Box<dyn Draw>>>>>) -> Result<(), ()> {
     let mut layer_count = LayerTracker { id: 0 };
     {
-        let bg = Square {
+        let bg = Rectangle {
             color: Color::BLACK,
-            size: WIDTH * 2,
+            width: WIDTH,
+            height: HEIGHT,
             hollow: false,
             pos: Position {
-                x: -25,
-                y: -25,
+                x: 0,
+                y: 0,
                 relative: PosOrientation::TopLeft,
             },
         };
@@ -63,17 +104,6 @@ pub async fn physics(objects: Arc<Mutex<HashMap<usize, Vec<Box<dyn Draw>>>>>) ->
         for y in range_y.clone().into_iter() {
             {
                 let mut objs = objects.lock().await;
-                // let sq = Square {
-                //     color: gui::Color::CYAN,
-                //     size: 5,
-                //     pos: Position {
-                //         x: (x),
-                //         y: (y),
-                //         relative: PosOrientation::TopLeft,
-                //     },
-                //     hollow: false,
-                // };
-
                 let sq = Pixel {
                     color: gui::Color::CYAN,
                     position: Position {
@@ -84,12 +114,16 @@ pub async fn physics(objects: Arc<Mutex<HashMap<usize, Vec<Box<dyn Draw>>>>>) ->
                 };
                 let layer = objs.get_mut(&1).unwrap();
                 layer.push(Box::new(sq));
-                // yield_now().await;
-                tokio::time::sleep(Duration::from_nanos(1)).await;
+                // tokio::time::sleep(Duration::from_nanos(1)).await;
             }
         }
     }
+
     loop {
+        let mut objs = objects.lock().await;
+        let layer = objs.get_mut(&1).unwrap();
+        layer.iter_mut().for_each(|f| {});
+
         yield_now().await;
     }
     // }
