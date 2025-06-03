@@ -3,23 +3,31 @@ extern crate sdl3;
 pub mod ascii;
 pub mod shape;
 
-use chrono::Utc;
-use sdl3::video::Window;
-use sdl3::{event::Event, keyboard::Keycode, pixels::Color, rect::Rect, render::Canvas};
-use shape::Square;
-use std::{
-    collections::{HashMap, HashSet},
-    time::Duration,
-};
-
 use crate::shape::Rectangle;
+use chrono::Utc;
+use sdl3::pixels::Color as SdlColor;
+use sdl3::video::Window;
+use sdl3::{event::Event, keyboard::Keycode, rect::Rect, render::Canvas};
+use shape::Square;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::{collections::HashSet, time::Duration};
+use tokio::sync::Mutex;
+use tokio::task::yield_now;
+
+const MAX_FRAME_RATE: u64 = 240;
+const SCALE: u32 = 2;
+
+pub const WIDTH: u32 = 640 * SCALE;
+pub const HEIGHT: u32 = 480 * SCALE;
+
+pub type Color = SdlColor;
 
 // any objects that need to be drawn need to be given this
 pub trait Draw {
     fn draw(&self, target: &mut View);
 }
 
-pub struct Buff(pub Vec<Vec<Option<u8>>>, Position);
 
 pub struct View {
     canvas: Canvas<Window>,
@@ -38,27 +46,30 @@ impl View {
         w: u32,
         h: u32,
         hollow: bool,
-        color: u8,
+        color: SdlColor,
     ) -> Result<(), Failed> {
-        let mut color_lookup = HashMap::new();
+        // let mut color_lookup = HashMap::new();
 
-        color_lookup.insert(0, Color::RGBA(0, 0, 0, 0));
-        color_lookup.insert(1, Color::WHITE);
-        color_lookup.insert(2, Color::BLACK);
+        // color_lookup.insert(0, Color::RGBA(0, 0, 0, 0));
+        // color_lookup.insert(1, Color::WHITE);
+        // color_lookup.insert(2, Color::BLACK);
 
-        let c = color_lookup.get(&color).unwrap();
+        // let c = color_lookup.get(&color).unwrap();
 
-        self.canvas.set_draw_color(c.clone());
+        self.canvas.set_draw_color(color);
 
         let r = Rect::new(x, y, w, h);
         if hollow {
+            if let Err(_) = self.canvas.draw_rect(r.into()) {
+                return Err(Failed::FailedToDrawRect);
+            };
+        } else {
             if let Err(_) = self.canvas.fill_rect(r) {
                 return Err(Failed::FailedToDrawRect);
             }
             if let Err(_) = self.canvas.draw_rect(r.into()) {
                 return Err(Failed::FailedToDrawRect);
             };
-        } else {
         }
 
         return Ok(());
@@ -81,10 +92,7 @@ pub enum PosOrientation {
     Center,
 }
 
-const WIDTH: u32 = 800;
-const HEIGHT: u32 = 600;
-
-pub fn run() -> Result<(), ()> {
+pub async fn run(objects: Arc<Mutex<HashMap<usize, Vec<Box<dyn Draw>>>>>) -> Result<(), ()> {
     let sdl_context = sdl3::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -97,13 +105,16 @@ pub fn run() -> Result<(), ()> {
 
     let canvas = window.into_canvas();
     let mut view = View { canvas };
+    view.canvas.set_scale(SCALE as f32, SCALE as f32).unwrap();
 
     let mut events = sdl_context.event_pump().unwrap();
 
-    let mut prev_buttons = HashSet::new();
+    yield_now().await;
+
+    // let mut prev_buttons = HashSet::new();
     let mut start_timestamp = Utc::now();
     let mut bg = Square {
-        color: 2,
+        color: Color::WHITE,
         size: WIDTH,
         hollow: true,
         pos: Position {
@@ -113,7 +124,7 @@ pub fn run() -> Result<(), ()> {
         },
     };
     let rct = Rectangle {
-        color: 2,
+        color: Color::WHITE,
         width: 50,
         height: 500,
         hollow: true,
@@ -123,7 +134,6 @@ pub fn run() -> Result<(), ()> {
             relative: PosOrientation::TopLeft,
         },
     };
-
 
     'running: loop {
         for event in events.poll_iter() {
@@ -147,51 +157,38 @@ pub fn run() -> Result<(), ()> {
         let state = events.mouse_state();
 
         // Create a set of pressed Keys.
-        let buttons = state.pressed_mouse_buttons().collect();
+        // let buttons = state.pressed_mouse_buttons().collect();
 
         // Get the difference between the new and old sets.
-        let new_buttons = &buttons - &prev_buttons;
-        let old_buttons = &prev_buttons - &buttons;
+        // let new_buttons = &buttons - &prev_buttons;
+        // let old_buttons = &prev_buttons - &buttons;
 
-        if !new_buttons.is_empty() || !old_buttons.is_empty() {
-            println!(
-                "X = {:?}, Y = {:?} : {:?} -> {:?}",
-                state.x(),
-                state.y(),
-                new_buttons,
-                old_buttons
-            );
-        }
-        prev_buttons = buttons;
-
-        let mut objects: Vec<Box<&dyn Draw>> = vec![Box::new(&bg)];
-
-        let sq2 = Square {
-            color: 1,
-            size: ((Utc::now() - start_timestamp).num_milliseconds()).wrapping_div(100) as u32,
-            hollow: true,
-            pos: Position {
-                x: WIDTH.div_ceil(2) as i32,
-                y: HEIGHT.div_ceil(2) as i32,
-                relative: PosOrientation::Center,
-            },
+        // if !new_buttons.is_empty() || !old_buttons.is_empty() {
+        //     println!(
+        //         "X = {:?}, Y = {:?} : {:?} -> {:?}",
+        //         state.x(),
+        //         state.y(),
+        //         new_buttons,
+        //         old_buttons
+        //     );
+        // }
+        // prev_buttons = buttons;
+        view.canvas.clear();
+        {
+            let objs = objects.lock().await;
+            objs.values().for_each(|layer| {
+                dbg!(layer.len());
+                layer.iter().for_each(|o| {
+                    o.draw(&mut view);
+                });
+            });
         };
-
-        match objects.get_mut(1) {
-            Some(a) => *a = Box::new(&sq2),
-            None => objects.push(Box::new(&sq2)),
-        };
-
-
-        objects.iter().for_each(|o| {
-            o.draw(&mut view);
-        });
-
         if !view.present() {
             break 'running;
         };
 
-        std::thread::sleep(Duration::from_millis(50));
+        tokio::time::sleep(Duration::from_secs(1 / MAX_FRAME_RATE)).await;
+        // yield_now().await;
     }
 
     Ok(())

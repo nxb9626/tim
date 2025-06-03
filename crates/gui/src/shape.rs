@@ -1,7 +1,10 @@
-use crate::{Draw, Position, View};
+use sdl3::rect::Point;
 
+use crate::{Color, Draw, Position, View};
+
+#[derive(Debug)]
 pub struct Square {
-    pub color: u8,
+    pub color: Color,
     pub size: u32,
     pub pos: Position,
     pub hollow: bool,
@@ -16,7 +19,6 @@ impl Draw for Square {
             ),
             crate::PosOrientation::TopLeft => (self.pos.x, self.pos.y),
         };
-        dbg!(x, y);
 
         if let Err(e) = t.try_draw_rect(
             x,
@@ -32,7 +34,7 @@ impl Draw for Square {
 }
 
 pub struct Rectangle {
-    pub color: u8,
+    pub color: Color,
     pub width: u32,
     pub height: u32,
     pub pos: Position,
@@ -48,7 +50,6 @@ impl Draw for Rectangle {
             ),
             crate::PosOrientation::TopLeft => (self.pos.x, self.pos.y),
         };
-        dbg!(x, y);
 
         if let Err(e) = t.try_draw_rect(
             x,
@@ -60,5 +61,24 @@ impl Draw for Rectangle {
         ) {
             dbg!("rect@{:?}, {:?}", self.pos, e);
         }
+    }
+}
+pub struct Pixel {
+    pub color: Color,
+    pub position: Position,
+}
+
+impl Draw for Pixel {
+    fn draw(&self, t: &mut View) {
+        t.canvas.set_draw_color(self.color);
+        match t
+            .canvas
+            .draw_point(Point::new(self.position.x as i32, self.position.y as i32))
+        {
+            Ok(_) => {}
+            Err(_) => {
+                dbg!("pixel@({:?},{}:?)", self.position.x, self.position.y);
+            }
+        };
     }
 }
