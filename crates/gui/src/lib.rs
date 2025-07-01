@@ -1,13 +1,14 @@
 extern crate sdl3;
 
-pub mod ascii;
 pub mod shape;
+pub mod text;
 
 use chrono::Utc;
 use sdl3::pixels::Color as SdlColor;
+use sdl3::render::FRect;
 use sdl3::video::Window;
 use sdl3::{EventPump, Sdl, VideoSubsystem};
-use sdl3::{event::Event, keyboard::Keycode, rect::Rect, render::Canvas};
+use sdl3::{event::Event, keyboard::Keycode, render::Canvas};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::{collections::HashSet, time::Duration};
@@ -15,13 +16,40 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::task::yield_now;
 
+use crate::shape::{Pixel, Rectangle, Square};
+use crate::text::Text;
+
 const MAX_FRAME_RATE: u64 = 240;
-const SCALE: u32 = 2;
+const SCALE: f32 = 1.0;
 
-pub const WIDTH: u32 = 640 * SCALE;
-pub const HEIGHT: u32 = 480 * SCALE;
+pub const WIDTH: f32 = 800.0 * SCALE;
+pub const HEIGHT: f32 = 600.0 * SCALE;
 
-pub type Color = SdlColor;
+pub enum Objects {
+    Pixel(Pixel),
+    Rectangle(Rectangle),
+    Square(Square),
+    Text(Text),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum Color {
+    WHITE,
+    BLACK,
+    CYAN,
+    PINK,
+}
+
+impl Into<SdlColor> for Color {
+    fn into(self) -> SdlColor {
+        match self {
+            Color::WHITE => SdlColor::WHITE,
+            Color::BLACK => SdlColor::BLACK,
+            Color::CYAN => SdlColor::CYAN,
+            Color::PINK => SdlColor::MAGENTA,
+        }
+    }
+}
 
 pub enum Signal {
     Quit,
@@ -29,7 +57,7 @@ pub enum Signal {
 
 pub struct Object;
 
-// any objects that need to be drawn need to be given this
+// Any objects that need to be drawn need to be given this
 pub trait Draw {
     fn draw(&self, target: &mut View);
 }
@@ -41,29 +69,23 @@ pub struct View {
 #[derive(Clone, Copy, Debug)]
 pub enum Failed {
     FailedToDrawRect,
+    RenderText,
 }
 
 impl View {
     pub fn try_draw_rect(
         &mut self,
-        x: i32,
-        y: i32,
-        w: u32,
-        h: u32,
+        x: f32,
+        y: f32,
+        w: f32,
+        h: f32,
         hollow: bool,
-        color: SdlColor,
+        color: impl Into<SdlColor>,
     ) -> Result<(), Failed> {
-        // let mut color_lookup = HashMap::new();
-
-        // color_lookup.insert(0, Color::RGBA(0, 0, 0, 0));
-        // color_lookup.insert(1, Color::WHITE);
-        // color_lookup.insert(2, Color::BLACK);
-
-        // let c = color_lookup.get(&color).unwrap();
-
         self.canvas.set_draw_color(color);
 
-        let r = Rect::new(x, y, w, h);
+        let r = FRect::new(x, y, w, h);
+
         if hollow {
             if let Err(_) = self.canvas.draw_rect(r.into()) {
                 return Err(Failed::FailedToDrawRect);
@@ -86,9 +108,21 @@ impl View {
 
 #[derive(Clone, Copy, Debug)]
 pub struct Position {
-    pub x: i32,
-    pub y: i32,
+    pub x: f32,
+    pub y: f32,
     pub relative: PosOrientation,
+}
+
+pub type Pos = Position;
+
+impl Position {
+    pub fn at(x: f32, y: f32) -> Self {
+        Position {
+            x: x,
+            y: y,
+            relative: PosOrientation::Center,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -104,7 +138,7 @@ pub fn init() -> Sdl {
 
 pub async fn input(
     mut events: EventPump,
-    objects: Arc<Mutex<HashMap<usize, Vec<Box<dyn Draw>>>>>,
+    _objects: Arc<Mutex<HashMap<usize, Vec<Objects>>>>,
     sender: UnboundedSender<Signal>,
 ) -> Result<(), ()> {
     let mut start_timestamp = Utc::now();
@@ -158,17 +192,28 @@ pub async fn input(
 
 pub async fn vis(
     video_subsystem: VideoSubsystem,
-    objects: Arc<Mutex<HashMap<usize, Vec<Box<dyn Draw>>>>>,
+    objects: Arc<Mutex<HashMap<usize, Vec<Objects>>>>,
     mut receiver: UnboundedReceiver<Signal>,
 ) -> Result<(), ()> {
     let window = video_subsystem
-        .window("Mouse", WIDTH, HEIGHT)
+        .window("Mouse", WIDTH as u32, HEIGHT as u32)
         .position_centered()
+        .opengl()
         .build()
         .map_err(|e| e.to_string())
         .unwrap();
 
     let canvas = window.into_canvas();
+
+    let ttf_context = sdl3::ttf::init().map_err(|e| e.to_string()).unwrap();
+
+    let mut font = ttf_context
+        .load_font(
+            "/Users/noah/Projects/mine/tim/fonts/16020_FUTURAM.ttf",
+            100.0,
+        )
+        .unwrap();
+
     let mut view = View { canvas };
     view.canvas.set_scale(SCALE as f32, SCALE as f32).unwrap();
 
@@ -182,11 +227,27 @@ pub async fn vis(
         view.canvas.clear();
         {
             let objs = objects.lock().await;
-            objs.values().for_each(|layer| {
-                // dbg!(layer.len());
-                layer.iter().for_each(|o| {
-                    o.draw(&mut view);
-                });
+            let mut x: Vec<&usize> = objs.keys().collect();
+            x.sort();
+            x.iter().for_each(|k| {
+                let olayer = objs.get(k);
+                match olayer {
+                    Some(layer) => {
+                        layer.iter().for_each(|o| {
+                            match o {
+                                Objects::Square(w) => w.draw(&mut view),
+                                Objects::Pixel(w) => w.draw(&mut view),
+                                Objects::Rectangle(rectangle) => rectangle.draw(&mut view),
+                                Objects::Text(text) => {
+                                    if let Err(e) = text.draw(&mut view, &mut font) {
+                                        dbg!("Failed to write text:{:?}", e);
+                                    }
+                                }
+                            };
+                        });
+                    }
+                    None => {}
+                }
             });
         };
 

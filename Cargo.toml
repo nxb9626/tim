@@ -7,3 +7,4 @@ edition = "2024"
 storage = { path = "crates/storage" }
 gui = { path = "crates/gui" }
 tokio = { version = "1.45.0", features = ["full"] }
+chrono = "0.4.41"

@@ -1,7 +1,7 @@
-use sqlx::{Executor, sqlite::SqlitePool};
+use sqlx::{sqlite::SqlitePool};
 
 pub struct Storage {
-    conn: SqlitePool,
+    _conn: SqlitePool,
 }
 
 pub enum StorageErrors {
@@ -12,7 +12,7 @@ impl<'a> Storage {
     pub fn start_action(&self) {}
     pub fn stop_action(&self) {}
 
-    pub fn select(&self, q: &str) {}
+    pub fn select(&self, _q: &str) {}
 
     // pub fn new(path: String) -> Result<Storage, StorageErrors> {
     // let conn = match open(path) {
