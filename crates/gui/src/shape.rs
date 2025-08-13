@@ -1,6 +1,9 @@
-use sdl3::{rect::Point, render::FRect};
+use sdl3::{
+    rect::Point,
+    render::{FPoint, FRect},
+};
 
-use crate::{Color, Draw, Objects, Position, View};
+use crate::{Color, Draw, Position, Shapes, View};
 
 #[derive(Debug)]
 pub struct Square {
@@ -23,9 +26,9 @@ impl Draw for Square {
     }
 }
 
-impl From<Square> for Objects {
+impl From<Square> for Shapes {
     fn from(value: Square) -> Self {
-        Objects::Square(value)
+        Shapes::Square(value)
     }
 }
 
@@ -68,9 +71,9 @@ pub struct Pixel {
     pub position: Position,
 }
 
-impl From<Pixel> for Objects {
+impl From<Pixel> for Shapes {
     fn from(value: Pixel) -> Self {
-        Objects::Pixel(value)
+        Shapes::Pixel(value)
     }
 }
 
@@ -89,8 +92,35 @@ impl Draw for Pixel {
     }
 }
 
-impl From<Rectangle> for Objects {
+impl From<Rectangle> for Shapes {
     fn from(value: Rectangle) -> Self {
-        Objects::Rectangle(value)
+        Shapes::Rectangle(value)
+    }
+}
+
+pub struct Line {
+    pub color: Color,
+    pub end: Position,
+    pub start: Position,
+}
+
+impl Draw for Line {
+    fn draw(&self, target: &mut View) {
+        target.canvas.set_draw_color(self.color);
+        let point1 = FPoint::new(self.start.x, self.start.y);
+        let point2 = FPoint::new(self.end.x, self.end.y);
+
+        match target.canvas.draw_line(point1, point2) {
+            Ok(_) => {}
+            Err(_) => {
+                dbg!(
+                    "line@({:?},{}:?) - ({:?},{}:?)",
+                    self.start.x,
+                    self.start.y,
+                    self.end.x,
+                    self.end.y
+                );
+            }
+        }
     }
 }

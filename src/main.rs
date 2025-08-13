@@ -2,8 +2,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use chrono::Utc;
 use gui::{
-    Color, HEIGHT, Objects, Pos, PosOrientation, Position, Signal, WIDTH, input,
-    shape::Rectangle,
+    Color, H_CENTER, HEIGHT, Pos, PosOrientation, Position, Shapes, Signal, W_CENTER, WIDTH, input,
+    shape::{Line, Rectangle},
     text::{Styling, Text},
 };
 
@@ -11,7 +11,7 @@ use tokio::{sync::Mutex, task::yield_now};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let objects: Arc<Mutex<HashMap<usize, Vec<Objects>>>> = Arc::new(Mutex::new(HashMap::new()));
+    let objects: Arc<Mutex<HashMap<usize, Vec<Shapes>>>> = Arc::new(Mutex::new(HashMap::new()));
 
     let sdl_context = gui::init();
 
@@ -47,7 +47,7 @@ pub trait Phys {
     fn has_gravity(&self) -> bool;
 }
 
-pub async fn physics(objects: Arc<Mutex<HashMap<usize, Vec<Objects>>>>) -> Result<(), ()> {
+pub async fn physics(objects: Arc<Mutex<HashMap<usize, Vec<Shapes>>>>) -> Result<(), ()> {
     let mut layer_count = LayerTracker { id: 0 };
     {
         let bg = Rectangle {
@@ -65,6 +65,8 @@ pub async fn physics(objects: Arc<Mutex<HashMap<usize, Vec<Objects>>>>) -> Resul
 
         objs.insert(layer_count.new_layer(), Vec::with_capacity(100_000_000));
         objs.insert(layer_count.new_layer(), Vec::with_capacity(100_000_000));
+        objs.insert(layer_count.new_layer(), Vec::with_capacity(100_000_000));
+
         let layer = objs.get_mut(&1).unwrap();
 
         layer.push(bg.into());
@@ -73,7 +75,7 @@ pub async fn physics(objects: Arc<Mutex<HashMap<usize, Vec<Objects>>>>) -> Resul
     // let range_x: Vec<i32> = (0..(WIDTH / 5)).map(|x| x * 2).collect();
     // let range_y: Vec<i32> = (0..(HEIGHT / 5)).map(|x| x * 2).collect();
 
-    let start = Utc::now();
+    let start = Utc::now(); //- Duration::from_secs(30000000000);
 
     // for x in range_x.into_iter() {
     //     for y in range_y.clone().into_iter() {
@@ -102,18 +104,48 @@ pub async fn physics(objects: Arc<Mutex<HashMap<usize, Vec<Objects>>>>) -> Resul
     loop {
         let mut objs = objects.lock().await;
 
+        {
+            let layer3 = objs.get_mut(&3).unwrap();
+            layer3.clear();
+            let x = Line {
+                color: Color::PINK,
+                end: Position {
+                    x: 0.0,
+                    y: HEIGHT / 2.0,
+                    relative: PosOrientation::TopLeft,
+                },
+                start: Position {
+                    x: WIDTH,
+                    y: HEIGHT / 2.0,
+                    relative: PosOrientation::TopLeft,
+                },
+            };
+            let y = Line {
+                color: Color::PINK,
+                end: Position {
+                    x: WIDTH / 2.0,
+                    y: 0.0,
+                    relative: PosOrientation::TopLeft,
+                },
+                start: Position {
+                    x: WIDTH / 2.0,
+                    y: HEIGHT,
+                    relative: PosOrientation::TopLeft,
+                },
+            };
+            layer3.push(Shapes::Line(y));
+            layer3.push(Shapes::Line(x));
+        }
+
         let time_since = Utc::now() - start;
         let layer = objs.get_mut(&2).unwrap();
 
         layer.clear();
 
-        let mins = time_since.num_minutes();
-        let secs = time_since.num_seconds();
-        // let millis = time_since.subsec_millis();
-
+        let val = time::format_timedelta(time_since);
         let tx = Text {
-            val: format!("{}:{}", mins, secs),
-            pos: Pos::at(WIDTH / 2.0, HEIGHT / 2.0),
+            val: val,
+            pos: Pos::at(W_CENTER, H_CENTER),
             size: gui::text::TextSize::Large,
             color: Color::WHITE,
             style: vec![Styling::Background(Color::CYAN)],

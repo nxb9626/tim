@@ -16,7 +16,7 @@ use tokio::sync::Mutex;
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use tokio::task::yield_now;
 
-use crate::shape::{Pixel, Rectangle, Square};
+use crate::shape::{Line, Pixel, Rectangle, Square};
 use crate::text::Text;
 
 const MAX_FRAME_RATE: u64 = 240;
@@ -25,10 +25,14 @@ const SCALE: f32 = 1.0;
 pub const WIDTH: f32 = 800.0 * SCALE;
 pub const HEIGHT: f32 = 600.0 * SCALE;
 
-pub enum Objects {
+pub const W_CENTER: f32 = WIDTH / 2.0;
+pub const H_CENTER: f32 = HEIGHT / 2.0;
+
+pub enum Shapes {
     Pixel(Pixel),
     Rectangle(Rectangle),
     Square(Square),
+    Line(Line),
     Text(Text),
 }
 
@@ -110,6 +114,7 @@ impl View {
 pub struct Position {
     pub x: f32,
     pub y: f32,
+    // what this is relative to
     pub relative: PosOrientation,
 }
 
@@ -138,7 +143,7 @@ pub fn init() -> Sdl {
 
 pub async fn input(
     mut events: EventPump,
-    _objects: Arc<Mutex<HashMap<usize, Vec<Objects>>>>,
+    _objects: Arc<Mutex<HashMap<usize, Vec<Shapes>>>>,
     sender: UnboundedSender<Signal>,
 ) -> Result<(), ()> {
     let mut start_timestamp = Utc::now();
@@ -192,7 +197,7 @@ pub async fn input(
 
 pub async fn vis(
     video_subsystem: VideoSubsystem,
-    objects: Arc<Mutex<HashMap<usize, Vec<Objects>>>>,
+    objects: Arc<Mutex<HashMap<usize, Vec<Shapes>>>>,
     mut receiver: UnboundedReceiver<Signal>,
 ) -> Result<(), ()> {
     let window = video_subsystem
@@ -210,7 +215,7 @@ pub async fn vis(
     let mut font = ttf_context
         .load_font(
             "/Users/noah/Projects/mine/tim/fonts/16020_FUTURAM.ttf",
-            100.0,
+            300.0,
         )
         .unwrap();
 
@@ -235,10 +240,11 @@ pub async fn vis(
                     Some(layer) => {
                         layer.iter().for_each(|o| {
                             match o {
-                                Objects::Square(w) => w.draw(&mut view),
-                                Objects::Pixel(w) => w.draw(&mut view),
-                                Objects::Rectangle(rectangle) => rectangle.draw(&mut view),
-                                Objects::Text(text) => {
+                                Shapes::Square(w) => w.draw(&mut view),
+                                Shapes::Pixel(p) => p.draw(&mut view),
+                                Shapes::Rectangle(r) => r.draw(&mut view),
+                                Shapes::Line(l) => l.draw(&mut view),
+                                Shapes::Text(text) => {
                                     if let Err(e) = text.draw(&mut view, &mut font) {
                                         dbg!("Failed to write text:{:?}", e);
                                     }

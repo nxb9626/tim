@@ -1426,7 +1426,15 @@ dependencies = [
  "chrono",
  "gui",
  "storage",
+ "time",
  "tokio",
+]
+
+[[package]]
+name = "time"
+version = "0.1.0"
+dependencies = [
+ "chrono",
 ]
 
 [[package]]

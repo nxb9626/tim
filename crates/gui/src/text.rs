@@ -1,6 +1,6 @@
 use sdl3::{render::FRect, ttf::Font};
 
-use crate::{Color, Failed, Objects, Position};
+use crate::{Color, Failed, Shapes, Position};
 
 #[derive(Debug)]
 pub enum TextSize {
@@ -82,8 +82,8 @@ impl Text {
     }
 }
 
-impl From<Text> for Objects {
+impl From<Text> for Shapes {
     fn from(value: Text) -> Self {
-        Objects::Text(value)
+        Shapes::Text(value)
     }
 }
