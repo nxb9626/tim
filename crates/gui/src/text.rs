@@ -1,8 +1,8 @@
 use sdl3::{render::FRect, ttf::Font};
 
-use crate::{Color, Failed, Shapes, Position};
+use crate::{Color, Failed, Position, Shapes};
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum TextSize {
     Tiny,
     Small,
@@ -21,12 +21,23 @@ impl From<&TextSize> for f32 {
     }
 }
 
-#[derive(Debug)]
+impl From<&TextSize> for f64 {
+    fn from(value: &TextSize) -> Self {
+        match value {
+            TextSize::Tiny => 20.0,
+            TextSize::Small => 40.0,
+            TextSize::Large => 80.0,
+            TextSize::TooBig => 160.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum Styling {
     Background(Color),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Text {
     pub val: String,
     pub pos: Position,

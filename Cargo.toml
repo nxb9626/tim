@@ -6,6 +6,9 @@ edition = "2024"
 [dependencies]
 storage = { path = "crates/storage" }
 gui = { path = "crates/gui" }
+vis = { path = "crates/vis" }
+components = { path = "crates/components" }
 time = { path = "crates/time" }
 tokio = { version = "1.45.0", features = ["full"] }
 chrono = "0.4.41"
+sdl3 = { version = "0.14.27", features = ["ttf"] }

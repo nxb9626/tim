@@ -3,23 +3,14 @@ extern crate sdl3;
 pub mod shape;
 pub mod text;
 
-use chrono::Utc;
+use sdl3::Sdl;
 use sdl3::pixels::Color as SdlColor;
+use sdl3::render::Canvas;
 use sdl3::render::FRect;
 use sdl3::video::Window;
-use sdl3::{EventPump, Sdl, VideoSubsystem};
-use sdl3::{event::Event, keyboard::Keycode, render::Canvas};
-use std::collections::HashMap;
-use std::sync::Arc;
-use std::{collections::HashSet, time::Duration};
-use tokio::sync::Mutex;
-use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
-use tokio::task::yield_now;
 
-use crate::shape::{Line, Pixel, Rectangle, Square};
-use crate::text::Text;
+use crate::shape::Shapes;
 
-const MAX_FRAME_RATE: u64 = 240;
 const SCALE: f32 = 1.0;
 
 pub const WIDTH: f32 = 800.0 * SCALE;
@@ -27,14 +18,6 @@ pub const HEIGHT: f32 = 600.0 * SCALE;
 
 pub const W_CENTER: f32 = WIDTH / 2.0;
 pub const H_CENTER: f32 = HEIGHT / 2.0;
-
-pub enum Shapes {
-    Pixel(Pixel),
-    Rectangle(Rectangle),
-    Square(Square),
-    Line(Line),
-    Text(Text),
-}
 
 #[derive(Debug, Copy, Clone)]
 pub enum Color {
@@ -59,15 +42,13 @@ pub enum Signal {
     Quit,
 }
 
-pub struct Object;
-
 // Any objects that need to be drawn need to be given this
 pub trait Draw {
     fn draw(&self, target: &mut View);
 }
 
 pub struct View {
-    canvas: Canvas<Window>,
+    pub canvas: Canvas<Window>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -141,128 +122,18 @@ pub fn init() -> Sdl {
     return sdl_context;
 }
 
-pub async fn input(
-    mut events: EventPump,
-    _objects: Arc<Mutex<HashMap<usize, Vec<Shapes>>>>,
-    sender: UnboundedSender<Signal>,
-) -> Result<(), ()> {
-    let mut start_timestamp = Utc::now();
-    let mut prev_buttons = HashSet::new();
-    loop {
-        for event in events.poll_iter() {
-            match event {
-                Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
+pub fn draw_shapes(font: &mut sdl3::ttf::Font, view: &mut View, shapes: Vec<&Shapes>) {
+    for shape in shapes {
+        match shape {
+            Shapes::Square(w) => w.draw(view),
+            Shapes::Pixel(p) => p.draw(view),
+            Shapes::Rectangle(r) => r.draw(view),
+            Shapes::Line(l) => l.draw(view),
+            Shapes::Text(text) => {
+                if let Err(e) = text.draw(view, font) {
+                    dbg!("Failed to write text:{:?}", e);
                 }
-                | Event::Quit { .. } => {
-                    if let Err(e) = sender.send(Signal::Quit) {
-                        panic!("Signal failed to quit: {e}")
-                    }
-                }
-                Event::KeyDown {
-                    keycode: Some(Keycode::Space),
-                    ..
-                } => {
-                    dbg!(start_timestamp);
-                    start_timestamp = Utc::now();
-                }
-                _ => {}
             }
         }
-
-        // get a mouse state
-        let state = events.mouse_state();
-
-        // Create a set of pressed Keys.
-        let buttons = state.pressed_mouse_buttons().collect();
-
-        // Get the difference between the new and old sets.
-        let new_buttons = &buttons - &prev_buttons;
-        let old_buttons = &prev_buttons - &buttons;
-
-        if !new_buttons.is_empty() || !old_buttons.is_empty() {
-            println!(
-                "X = {:?}, Y = {:?} : {:?} -> {:?}",
-                state.x(),
-                state.y(),
-                new_buttons,
-                old_buttons
-            );
-        }
-        prev_buttons = buttons;
-        yield_now().await;
     }
-}
-
-pub async fn vis(
-    video_subsystem: VideoSubsystem,
-    objects: Arc<Mutex<HashMap<usize, Vec<Shapes>>>>,
-    mut receiver: UnboundedReceiver<Signal>,
-) -> Result<(), ()> {
-    let window = video_subsystem
-        .window("Mouse", WIDTH as u32, HEIGHT as u32)
-        .position_centered()
-        .opengl()
-        .build()
-        .map_err(|e| e.to_string())
-        .unwrap();
-
-    let canvas = window.into_canvas();
-
-    let ttf_context = sdl3::ttf::init().map_err(|e| e.to_string()).unwrap();
-
-    let mut font = ttf_context
-        .load_font(
-            "/Users/noah/Projects/mine/tim/fonts/16020_FUTURAM.ttf",
-            300.0,
-        )
-        .unwrap();
-
-    let mut view = View { canvas };
-    view.canvas.set_scale(SCALE as f32, SCALE as f32).unwrap();
-
-    'view: loop {
-        if receiver.len() > 0 {
-            if let Some(Signal::Quit) = receiver.recv().await {
-                break 'view;
-            };
-        }
-
-        view.canvas.clear();
-        {
-            let objs = objects.lock().await;
-            let mut x: Vec<&usize> = objs.keys().collect();
-            x.sort();
-            x.iter().for_each(|k| {
-                let olayer = objs.get(k);
-                match olayer {
-                    Some(layer) => {
-                        layer.iter().for_each(|o| {
-                            match o {
-                                Shapes::Square(w) => w.draw(&mut view),
-                                Shapes::Pixel(p) => p.draw(&mut view),
-                                Shapes::Rectangle(r) => r.draw(&mut view),
-                                Shapes::Line(l) => l.draw(&mut view),
-                                Shapes::Text(text) => {
-                                    if let Err(e) = text.draw(&mut view, &mut font) {
-                                        dbg!("Failed to write text:{:?}", e);
-                                    }
-                                }
-                            };
-                        });
-                    }
-                    None => {}
-                }
-            });
-        };
-
-        if !view.present() {
-            break 'view;
-        };
-
-        tokio::time::sleep(Duration::from_secs(1 / MAX_FRAME_RATE)).await;
-    }
-
-    Ok(())
 }

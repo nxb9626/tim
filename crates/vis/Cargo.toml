@@ -1,10 +1,11 @@
 [package]
-name = "gui"
+name = "vis"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-# sdl2 = "0.37.0"
-chrono = "0.4.41"
+gui = { path = "../gui" }
+components = { path = "../components" }
 sdl3 = { version = "0.14.27", features = ["ttf"] }
 tokio = { version = "1.45.0", features = ["full"] }
+chrono = "0.4.41"

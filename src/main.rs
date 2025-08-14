@@ -1,17 +1,21 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::BTreeMap, sync::Arc};
 
 use chrono::Utc;
+use components::{Component, crosshair::Crosshair, debug::Debugger};
 use gui::{
-    Color, H_CENTER, HEIGHT, Pos, PosOrientation, Position, Shapes, Signal, W_CENTER, WIDTH, input,
-    shape::{Line, Rectangle},
+    Color, H_CENTER, HEIGHT, Pos, PosOrientation, Position, Signal, W_CENTER, WIDTH,
+    shape::{Rectangle, Shapes},
     text::{Styling, Text},
 };
 
 use tokio::{sync::Mutex, task::yield_now};
+use vis::Objects;
+
+// The global god object type
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let objects: Arc<Mutex<HashMap<usize, Vec<Shapes>>>> = Arc::new(Mutex::new(HashMap::new()));
+    let mut objects: Objects = Arc::new(Mutex::new(BTreeMap::new()));
 
     let sdl_context = gui::init();
 
@@ -22,9 +26,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // eventually need two way channels for events to go from filesystem to gui
     tokio::select! {
-        run_res = gui::vis(video_subsystem, objects.clone(), quit_receiver) => run_res.unwrap(), // just exit for now
+        run_res = vis::vis(video_subsystem, objects.clone(), quit_receiver) => run_res.unwrap(), // just exit for now
         update_res = physics(objects.clone()) => update_res.unwrap(), // just exit for now
-        input = input(event_pump, objects.clone(), quit_sender) => input.unwrap(), // just exit for now
+        input = vis::input(event_pump, objects.clone(), quit_sender) => input.unwrap(), // just exit for now
     };
 
     Ok(())
@@ -47,7 +51,7 @@ pub trait Phys {
     fn has_gravity(&self) -> bool;
 }
 
-pub async fn physics(objects: Arc<Mutex<HashMap<usize, Vec<Shapes>>>>) -> Result<(), ()> {
+pub async fn physics(objects: Objects) -> Result<(), ()> {
     let mut layer_count = LayerTracker { id: 0 };
     {
         let bg = Rectangle {
@@ -63,79 +67,37 @@ pub async fn physics(objects: Arc<Mutex<HashMap<usize, Vec<Shapes>>>>) -> Result
         };
         let mut objs = objects.lock().await;
 
-        objs.insert(layer_count.new_layer(), Vec::with_capacity(100_000_000));
-        objs.insert(layer_count.new_layer(), Vec::with_capacity(100_000_000));
-        objs.insert(layer_count.new_layer(), Vec::with_capacity(100_000_000));
+        objs.insert(layer_count.new_layer(), BTreeMap::new());
 
-        let layer = objs.get_mut(&1).unwrap();
+        objs.insert(layer_count.new_layer(), BTreeMap::new());
 
-        layer.push(bg.into());
+        objs.insert(layer_count.new_layer(), BTreeMap::new());
+
+        // background always in the back
+        {
+            let layer = objs.get_mut(&1).unwrap();
+            layer.insert(
+                "background".to_string(),
+                Component::Shapes(Shapes::Rectangle(bg)),
+            );
+            layer.insert("crosshair".to_string(), Component::Crosshair(Crosshair {}));
+        }
+
+        // debugger always on top
+        {
+            let last_index = 1;
+            let layer_last = objs.get_mut(&last_index).unwrap();
+            layer_last.insert(
+                "debugger".to_string(),
+                Component::DebugMenu(Debugger::default()),
+            );
+        }
     }
 
-    // let range_x: Vec<i32> = (0..(WIDTH / 5)).map(|x| x * 2).collect();
-    // let range_y: Vec<i32> = (0..(HEIGHT / 5)).map(|x| x * 2).collect();
-
-    let start = Utc::now(); //- Duration::from_secs(30000000000);
-
-    // for x in range_x.into_iter() {
-    //     for y in range_y.clone().into_iter() {
-    //         let z = x * y;
-    //         let fizz = z % 3 == 0;
-    //         let buzz = z % 5 == 0;
-    //         let color = match (fizz, buzz) {
-    //             (true, true) => gui::Color::WHITE,
-    //             (true, false) => gui::Color::PINK,
-    //             (false, true) => gui::Color::CYAN,
-    //             (false, false) => gui::Color::BLACK,
-    //         };
-    //         let mut objs = objects.lock().await;
-
-    //         let sq = Pixel {
-    //             color,
-    //             position: Pos::at(x, y),
-    //         };
-
-    //         layer.push(sq.into());
-
-    //         layer.push(tx.into());
-    //     }
-    // }
+    let start = Utc::now();
 
     loop {
         let mut objs = objects.lock().await;
-
-        {
-            let layer3 = objs.get_mut(&3).unwrap();
-            layer3.clear();
-            let x = Line {
-                color: Color::PINK,
-                end: Position {
-                    x: 0.0,
-                    y: HEIGHT / 2.0,
-                    relative: PosOrientation::TopLeft,
-                },
-                start: Position {
-                    x: WIDTH,
-                    y: HEIGHT / 2.0,
-                    relative: PosOrientation::TopLeft,
-                },
-            };
-            let y = Line {
-                color: Color::PINK,
-                end: Position {
-                    x: WIDTH / 2.0,
-                    y: 0.0,
-                    relative: PosOrientation::TopLeft,
-                },
-                start: Position {
-                    x: WIDTH / 2.0,
-                    y: HEIGHT,
-                    relative: PosOrientation::TopLeft,
-                },
-            };
-            layer3.push(Shapes::Line(y));
-            layer3.push(Shapes::Line(x));
-        }
 
         let time_since = Utc::now() - start;
         let layer = objs.get_mut(&2).unwrap();
@@ -151,7 +113,7 @@ pub async fn physics(objects: Arc<Mutex<HashMap<usize, Vec<Shapes>>>>) -> Result
             style: vec![Styling::Background(Color::CYAN)],
         };
 
-        layer.push(tx.into());
+        layer.insert("crosshair".to_string(), Component::Shapes(tx.into()));
         yield_now().await;
     }
 }

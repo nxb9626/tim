@@ -3,9 +3,18 @@ use sdl3::{
     render::{FPoint, FRect},
 };
 
-use crate::{Color, Draw, Position, Shapes, View};
+use crate::{Color, Draw, Position, View, text::Text};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub enum Shapes {
+    Pixel(Pixel),
+    Rectangle(Rectangle),
+    Square(Square),
+    Line(Line),
+    Text(Text),
+}
+
+#[derive(Debug, Copy, Clone)]
 pub struct Square {
     pub color: Color,
     pub size: f32,
@@ -32,6 +41,7 @@ impl From<Square> for Shapes {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
 pub struct Rectangle {
     pub color: Color,
     pub width: f32,
@@ -66,6 +76,7 @@ impl Draw for Rectangle {
         }
     }
 }
+#[derive(Debug, Copy, Clone)]
 pub struct Pixel {
     pub color: Color,
     pub position: Position,
@@ -98,6 +109,7 @@ impl From<Rectangle> for Shapes {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Line {
     pub color: Color,
     pub end: Position,
