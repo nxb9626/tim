@@ -41,7 +41,7 @@ struct LayerTracker {
 impl LayerTracker {
     fn new_layer(&mut self) -> usize {
         self.id += 1;
-        return self.id;
+        self.id
     }
 }
 
@@ -106,7 +106,7 @@ pub async fn physics(objects: Objects) -> Result<(), ()> {
 
         let val = time::format_timedelta(time_since);
         let tx = Text {
-            val: val,
+            val,
             pos: Pos::at(W_CENTER, H_CENTER),
             size: gui::text::TextSize::Large,
             color: Color::WHITE,
