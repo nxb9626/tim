@@ -15,7 +15,7 @@ use vis::Objects;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut objects: Objects = Arc::new(Mutex::new(BTreeMap::new()));
+    let objects: Objects = Arc::new(Mutex::new(BTreeMap::new()));
 
     let sdl_context = gui::init();
 
