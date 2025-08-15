@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 
 gui = { path = "../gui" }
+tokio = { version = "1.45.0", features = ["full"] }

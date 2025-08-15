@@ -1,29 +1,21 @@
-use std::{
-    collections::{BTreeMap, HashSet},
-    sync::Arc,
-    time::Duration,
-};
-
 use chrono::{TimeDelta, Utc};
-use components::Component;
-use gui::{HEIGHT, Signal, View, WIDTH, draw_shapes};
 use sdl3::{EventPump, VideoSubsystem, event::Event, keyboard::Keycode};
+
 use tokio::{
-    sync::{
-        Mutex,
-        mpsc::{UnboundedReceiver, UnboundedSender},
-    },
+    sync::mpsc::{UnboundedReceiver, UnboundedSender},
     task::yield_now,
 };
+
+use std::{collections::HashSet, time::Duration};
+
+use components::{COMPONENT_LAYERS, Component};
+use gui::{HEIGHT, Signal, View, WIDTH, draw_shapes};
 
 const MAX_FRAME_RATE: u64 = 240;
 const SCALE: f32 = 1.0;
 
-pub type Objects = Arc<Mutex<BTreeMap<usize, BTreeMap<String, Component>>>>;
-
 pub async fn vis(
     video_subsystem: VideoSubsystem,
-    objects: Objects,
     mut receiver: UnboundedReceiver<Signal>,
 ) -> Result<(), ()> {
     let window = video_subsystem
@@ -61,7 +53,7 @@ pub async fn vis(
 
         view.canvas.clear();
         {
-            let objs = objects.lock().await;
+            let objs = COMPONENT_LAYERS.lock().await;
             let mut x: Vec<&usize> = objs.keys().collect();
             x.sort();
             x.iter().for_each(|k| {
@@ -72,7 +64,7 @@ pub async fn vis(
                             Component::Shapes(shapes) => {
                                 draw_shapes(&mut font, &mut view, vec![shapes]);
                             }
-                            Component::DebugMenu(dbgm) => draw_shapes(
+                            Component::Debugger(dbgm) => draw_shapes(
                                 &mut font,
                                 &mut view,
                                 dbgm.get_shapes().iter().map(|f| f).collect(),
@@ -93,17 +85,15 @@ pub async fn vis(
             let time_since_last_frame = Utc::now() - time_of_last_update;
             if time_since_last_frame >= TimeDelta::seconds(1) {
                 time_of_last_update = Utc::now();
-                let mut x = objects.lock().await;
+                let mut x = COMPONENT_LAYERS.lock().await;
                 let layer2 = match x.get_mut(&1) {
                     Some(layer2) => layer2,
                     None => continue,
                 };
 
                 match layer2.get_mut("debugger") {
-                    Some(Component::DebugMenu(debugger)) => {
+                    Some(Component::Debugger(debugger)) => {
                         debugger.watch("FPS", components::debug::DbgVal::U64(framecount));
-                        debugger.watch("FPS2", components::debug::DbgVal::U64(framecount));
-                        debugger.watch("FPS3", components::debug::DbgVal::U64(framecount));
                     }
                     _ => {}
                 };
@@ -124,11 +114,7 @@ pub async fn vis(
     Ok(())
 }
 
-pub async fn input(
-    mut events: EventPump,
-    objects: Objects,
-    sender: UnboundedSender<Signal>,
-) -> Result<(), ()> {
+pub async fn input(mut events: EventPump, sender: UnboundedSender<Signal>) -> Result<(), ()> {
     let mut start_timestamp = Utc::now();
     let mut prev_buttons = HashSet::new();
     loop {
@@ -154,14 +140,14 @@ pub async fn input(
                     keycode: Some(Keycode::F3),
                     ..
                 } => {
-                    let mut x = objects.lock().await;
+                    let mut x = COMPONENT_LAYERS.lock().await;
                     let layer2 = match x.get_mut(&1) {
                         Some(layer2) => layer2,
                         None => continue,
                     };
 
                     match layer2.get_mut("debugger") {
-                        Some(Component::DebugMenu(debugger)) => {
+                        Some(Component::Debugger(debugger)) => {
                             debugger.toggle();
                         }
                         _ => {}

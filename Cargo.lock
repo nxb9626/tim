@@ -150,6 +150,7 @@ name = "components"
 version = "0.1.0"
 dependencies = [
  "gui",
+ "tokio",
 ]
 
 [[package]]

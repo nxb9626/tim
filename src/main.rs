@@ -1,22 +1,17 @@
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use chrono::Utc;
-use components::{Component, crosshair::Crosshair, debug::Debugger};
+use components::{Component, crosshair::Crosshair, debug::Debugger, COMPONENT_LAYERS};
 use gui::{
     Color, H_CENTER, HEIGHT, Pos, PosOrientation, Position, Signal, W_CENTER, WIDTH,
     shape::{Rectangle, Shapes},
     text::{Styling, Text},
 };
 
-use tokio::{sync::Mutex, task::yield_now};
-use vis::Objects;
-
-// The global god object type
+use tokio::task::yield_now;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let objects: Objects = Arc::new(Mutex::new(BTreeMap::new()));
-
     let sdl_context = gui::init();
 
     let video_subsystem = sdl_context.video().unwrap();
@@ -26,9 +21,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // eventually need two way channels for events to go from filesystem to gui
     tokio::select! {
-        run_res = vis::vis(video_subsystem, objects.clone(), quit_receiver) => run_res.unwrap(), // just exit for now
-        update_res = physics(objects.clone()) => update_res.unwrap(), // just exit for now
-        input = vis::input(event_pump, objects.clone(), quit_sender) => input.unwrap(), // just exit for now
+        run_res = vis::vis(video_subsystem,  quit_receiver) => run_res.unwrap(), // just exit for now
+        update_res = physics() => update_res.unwrap(), // just exit for now
+        input = vis::input(event_pump,  quit_sender) => input.unwrap(), // just exit for now
     };
 
     Ok(())
@@ -51,7 +46,7 @@ pub trait Phys {
     fn has_gravity(&self) -> bool;
 }
 
-pub async fn physics(objects: Objects) -> Result<(), ()> {
+pub async fn physics() -> Result<(), ()> {
     let mut layer_count = LayerTracker { id: 0 };
     {
         let bg = Rectangle {
@@ -65,7 +60,7 @@ pub async fn physics(objects: Objects) -> Result<(), ()> {
                 relative: PosOrientation::TopLeft,
             },
         };
-        let mut objs = objects.lock().await;
+        let mut objs = COMPONENT_LAYERS.lock().await;
 
         objs.insert(layer_count.new_layer(), BTreeMap::new());
 
@@ -76,10 +71,7 @@ pub async fn physics(objects: Objects) -> Result<(), ()> {
         // background always in the back
         {
             let layer = objs.get_mut(&1).unwrap();
-            layer.insert(
-                "background".to_string(),
-                Component::Shapes(Shapes::Rectangle(bg)),
-            );
+            layer.insert("background".to_string(), Shapes::Rectangle(bg).into());
             layer.insert("crosshair".to_string(), Component::Crosshair(Crosshair {}));
         }
 
@@ -89,7 +81,7 @@ pub async fn physics(objects: Objects) -> Result<(), ()> {
             let layer_last = objs.get_mut(&last_index).unwrap();
             layer_last.insert(
                 "debugger".to_string(),
-                Component::DebugMenu(Debugger::default()),
+                Component::Debugger(Debugger::default()),
             );
         }
     }
@@ -97,7 +89,7 @@ pub async fn physics(objects: Objects) -> Result<(), ()> {
     let start = Utc::now();
 
     loop {
-        let mut objs = objects.lock().await;
+        let mut objs = COMPONENT_LAYERS.lock().await;
 
         let time_since = Utc::now() - start;
         let layer = objs.get_mut(&2).unwrap();
