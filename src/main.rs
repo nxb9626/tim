@@ -1,7 +1,8 @@
-use std::collections::BTreeMap;
-
 use chrono::Utc;
-use components::{Component, crosshair::Crosshair, debug::Debugger, COMPONENT_LAYERS};
+use components::{
+    BACKGROUND, COMPONENT_LAYERS, Component, DEBUGGER, FOREGROUND, crosshair::Crosshair,
+    debug::Debugger,
+};
 use gui::{
     Color, H_CENTER, HEIGHT, Pos, PosOrientation, Position, Signal, W_CENTER, WIDTH,
     shape::{Rectangle, Shapes},
@@ -14,8 +15,13 @@ use tokio::task::yield_now;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sdl_context = gui::init();
 
-    let video_subsystem = sdl_context.video().unwrap();
-    let event_pump = sdl_context.event_pump().unwrap();
+    let video_subsystem = sdl_context
+        .video()
+        .expect("Failed to start sdl3 video system.");
+
+    let event_pump = sdl_context
+        .event_pump()
+        .expect("Failed to start sdl3 event (Input) system.");
 
     let (quit_sender, quit_receiver) = tokio::sync::mpsc::unbounded_channel::<Signal>();
 
@@ -29,17 +35,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-struct LayerTracker {
-    id: usize,
-}
-
-impl LayerTracker {
-    fn new_layer(&mut self) -> usize {
-        self.id += 1;
-        self.id
-    }
-}
-
 pub trait Phys {
     fn update_position(&mut self, pos: Position);
     fn get_position(&mut self) -> Position;
@@ -47,7 +42,6 @@ pub trait Phys {
 }
 
 pub async fn physics() -> Result<(), ()> {
-    let mut layer_count = LayerTracker { id: 0 };
     {
         let bg = Rectangle {
             color: Color::BLACK,
@@ -60,25 +54,21 @@ pub async fn physics() -> Result<(), ()> {
                 relative: PosOrientation::TopLeft,
             },
         };
+
         let mut objs = COMPONENT_LAYERS.lock().await;
-
-        objs.insert(layer_count.new_layer(), BTreeMap::new());
-
-        objs.insert(layer_count.new_layer(), BTreeMap::new());
-
-        objs.insert(layer_count.new_layer(), BTreeMap::new());
 
         // background always in the back
         {
-            let layer = objs.get_mut(&1).unwrap();
-            layer.insert("background".to_string(), Shapes::Rectangle(bg).into());
-            layer.insert("crosshair".to_string(), Component::Crosshair(Crosshair {}));
+            let background = objs.get_mut(&BACKGROUND).unwrap();
+            background.insert("background".to_string(), Shapes::Rectangle(bg).into());
         }
-
-        // debugger always on top
         {
-            let last_index = 1;
-            let layer_last = objs.get_mut(&last_index).unwrap();
+            let foreground = objs.get_mut(&FOREGROUND).unwrap();
+            foreground.insert("crosshair".to_string(), Component::Crosshair(Crosshair {}));
+        }
+        // debugger always on top layer
+        {
+            let layer_last = objs.get_mut(&DEBUGGER).unwrap();
             layer_last.insert(
                 "debugger".to_string(),
                 Component::Debugger(Debugger::default()),
@@ -92,9 +82,7 @@ pub async fn physics() -> Result<(), ()> {
         let mut objs = COMPONENT_LAYERS.lock().await;
 
         let time_since = Utc::now() - start;
-        let layer = objs.get_mut(&2).unwrap();
-
-        layer.clear();
+        let layer = objs.get_mut(&FOREGROUND).unwrap();
 
         let val = time::format_timedelta(time_since);
         let tx = Text {
@@ -105,7 +93,7 @@ pub async fn physics() -> Result<(), ()> {
             style: vec![Styling::Background(Color::CYAN)],
         };
 
-        layer.insert("crosshair".to_string(), Component::Shapes(tx.into()));
+        layer.insert("time".to_string(), Component::Shapes(tx.into()));
         yield_now().await;
     }
 }

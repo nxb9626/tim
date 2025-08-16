@@ -8,7 +8,7 @@ use tokio::{
 
 use std::{collections::HashSet, time::Duration};
 
-use components::{COMPONENT_LAYERS, Component};
+use components::{COMPONENT_LAYERS, Component, DEBUGGER, debug::DbgVal};
 use gui::{HEIGHT, Signal, View, WIDTH, draw_shapes};
 
 const MAX_FRAME_RATE: u64 = 240;
@@ -60,21 +60,9 @@ pub async fn vis(
                 let olayer = objs.get(k);
                 match olayer {
                     Some(layer) => {
-                        layer.values().for_each(|o| match o {
-                            Component::Shapes(shapes) => {
-                                draw_shapes(&mut font, &mut view, vec![shapes]);
-                            }
-                            Component::Debugger(dbgm) => draw_shapes(
-                                &mut font,
-                                &mut view,
-                                dbgm.get_shapes().iter().map(|f| f).collect(),
-                            ),
-                            Component::Crosshair(crosshair) => draw_shapes(
-                                &mut font,
-                                &mut view,
-                                crosshair.get_shapes().iter().map(|f| f).collect(),
-                            ),
-                        });
+                        layer
+                            .values()
+                            .for_each(|o| draw_components(&mut font, &mut view, o));
                     }
                     None => {}
                 }
@@ -86,14 +74,14 @@ pub async fn vis(
             if time_since_last_frame >= TimeDelta::seconds(1) {
                 time_of_last_update = Utc::now();
                 let mut x = COMPONENT_LAYERS.lock().await;
-                let layer2 = match x.get_mut(&1) {
+                let layer2 = match x.get_mut(&DEBUGGER) {
                     Some(layer2) => layer2,
                     None => continue,
                 };
 
                 match layer2.get_mut("debugger") {
                     Some(Component::Debugger(debugger)) => {
-                        debugger.watch("FPS", components::debug::DbgVal::U64(framecount));
+                        debugger.watch("FPS", DbgVal::U64(framecount));
                     }
                     _ => {}
                 };
@@ -114,8 +102,24 @@ pub async fn vis(
     Ok(())
 }
 
+fn draw_components(font: &mut sdl3::ttf::Font, view: &mut View, o: &Component) {
+    match o {
+        Component::Shapes(shapes) => {
+            draw_shapes(font, view, vec![shapes]);
+        }
+        Component::Debugger(dbgm) => {
+            draw_shapes(font, view, dbgm.get_shapes().iter().map(|f| f).collect())
+        }
+        Component::Crosshair(crosshair) => draw_shapes(
+            font,
+            view,
+            crosshair.get_shapes().iter().map(|f| f).collect(),
+        ),
+    }
+}
+
 pub async fn input(mut events: EventPump, sender: UnboundedSender<Signal>) -> Result<(), ()> {
-    let mut start_timestamp = Utc::now();
+    let mut _start_timestamp = Utc::now();
     let mut prev_buttons = HashSet::new();
     loop {
         for event in events.poll_iter() {
@@ -133,15 +137,14 @@ pub async fn input(mut events: EventPump, sender: UnboundedSender<Signal>) -> Re
                     keycode: Some(Keycode::Space),
                     ..
                 } => {
-                    dbg!(start_timestamp);
-                    start_timestamp = Utc::now();
+                    _start_timestamp = Utc::now();
                 }
                 Event::KeyDown {
                     keycode: Some(Keycode::F3),
                     ..
                 } => {
                     let mut x = COMPONENT_LAYERS.lock().await;
-                    let layer2 = match x.get_mut(&1) {
+                    let layer2 = match x.get_mut(&DEBUGGER) {
                         Some(layer2) => layer2,
                         None => continue,
                     };

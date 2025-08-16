@@ -13,6 +13,7 @@ pub enum DbgVal {
     String(String),
 }
 
+#[derive(Debug)]
 pub struct Debugger {
     vals: BTreeMap<String, DbgVal>,
     visible: bool,

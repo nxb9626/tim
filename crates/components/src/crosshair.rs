@@ -3,7 +3,9 @@ use gui::{
     shape::{Line, Shapes},
 };
 
+#[derive(Debug)]
 pub struct Crosshair {}
+
 impl Crosshair {
     pub fn get_shapes(&self) -> Vec<Shapes> {
         let x = Line {
