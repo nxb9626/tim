@@ -3,7 +3,7 @@ use components::{
     BACKGROUND, COMPONENT_LAYERS, Component, DEBUGGER, FOREGROUND, crosshair::Crosshair,
     debug::Debugger,
 };
-use gui::{
+use shapes::{
     Color, H_CENTER, HEIGHT, Pos, PosOrientation, Position, Signal, W_CENTER, WIDTH,
     shape::{Rectangle, Shapes},
     text::{Styling, Text},
@@ -13,7 +13,7 @@ use tokio::task::yield_now;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let sdl_context = gui::init();
+    let sdl_context = shapes::init();
 
     let video_subsystem = sdl_context
         .video()
@@ -88,7 +88,7 @@ pub async fn physics() -> Result<(), ()> {
         let tx = Text {
             val,
             pos: Pos::at(W_CENTER, H_CENTER),
-            size: gui::text::TextSize::Large,
+            size: shapes::text::TextSize::Large,
             color: Color::WHITE,
             style: vec![Styling::Background(Color::CYAN)],
         };

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use gui::{
+use shapes::{
     Color, PosOrientation, Position,
     shape::Shapes,
     text::{self, Text},

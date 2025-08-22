@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 storage = { path = "crates/storage" }
-gui = { path = "crates/gui" }
+shapes = { path = "crates/shapes" }
 vis = { path = "crates/vis" }
 components = { path = "crates/components" }
 time = { path = "crates/time" }

@@ -1,10 +1,12 @@
-use gui::{
+use shapes::{
     Color, HEIGHT, PosOrientation, Position, WIDTH,
     shape::{Line, Shapes},
 };
 
 #[derive(Debug)]
-pub struct Crosshair {}
+pub struct Crosshair {
+    // position: Position,
+}
 
 impl Crosshair {
     pub fn get_shapes(&self) -> Vec<Shapes> {

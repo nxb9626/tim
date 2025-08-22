@@ -1,6 +1,6 @@
 use tokio::sync::Mutex;
 
-use gui::shape::Shapes;
+use shapes::shape::Shapes;
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, LazyLock};

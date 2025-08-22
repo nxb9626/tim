@@ -9,7 +9,7 @@ use tokio::{
 use std::{collections::HashSet, time::Duration};
 
 use components::{COMPONENT_LAYERS, Component, DEBUGGER, debug::DbgVal};
-use gui::{HEIGHT, Signal, View, WIDTH, draw_shapes};
+use shapes::{HEIGHT, Signal, View, WIDTH, draw_shapes};
 
 const MAX_FRAME_RATE: u64 = 240;
 const SCALE: f32 = 1.0;

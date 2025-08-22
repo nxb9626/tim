@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-gui = { path = "../gui" }
+shapes = { path = "../shapes" }
 components = { path = "../components" }
 sdl3 = { version = "0.14.27", features = ["ttf"] }
 tokio = { version = "1.45.0", features = ["full"] }
