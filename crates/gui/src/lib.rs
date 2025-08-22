@@ -91,7 +91,7 @@ impl View {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct Position {
     pub x: f32,
     pub y: f32,
@@ -111,10 +111,11 @@ impl Position {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum PosOrientation {
     TopLeft,
     Center,
+    Parent(Box<Position>),
 }
 
 pub fn init() -> Sdl {

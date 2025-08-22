@@ -14,7 +14,7 @@ pub enum Shapes {
     Text(Text),
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Square {
     pub color: Color,
     pub size: f32,
@@ -24,13 +24,17 @@ pub struct Square {
 
 impl Draw for Square {
     fn draw(&self, t: &mut View) {
-        let (x, y) = match self.pos.relative {
+        let (x, y) = match &self.pos.relative {
             crate::PosOrientation::Center => (self.pos.x / 2.0, self.pos.y / 2.0),
             crate::PosOrientation::TopLeft => (self.pos.x, self.pos.y),
+            crate::PosOrientation::Parent(parent_position) => (
+                self.pos.x + parent_position.x,
+                self.pos.y + parent_position.y,
+            ),
         };
 
         if let Err(e) = t.try_draw_rect(x, y, self.size, self.size, self.hollow, self.color) {
-            dbg!("sqr@{:?}, {:?}", self.pos, e);
+            dbg!("sqr@{:?}, {:?}", &self.pos, e);
         }
     }
 }
@@ -41,7 +45,7 @@ impl From<Square> for Shapes {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Rectangle {
     pub color: Color,
     pub width: f32,
@@ -63,20 +67,24 @@ impl Into<FRect> for &Rectangle {
 
 impl Draw for Rectangle {
     fn draw(&self, t: &mut View) {
-        let (x, y) = match self.pos.relative {
+        let (x, y) = match &self.pos.relative {
             crate::PosOrientation::Center => (
                 self.pos.x - self.width / 2.0,
                 self.pos.y - self.height / 2.0,
             ),
             crate::PosOrientation::TopLeft => (self.pos.x, self.pos.y),
+            crate::PosOrientation::Parent(parent_position) => (
+                self.pos.x + parent_position.x,
+                self.pos.y + parent_position.y,
+            ),
         };
 
         if let Err(e) = t.try_draw_rect(x, y, self.width, self.height, self.hollow, self.color) {
-            dbg!("rect@{:?}, {:?}", self.pos, e);
+            dbg!("rect@{:?}, {:?}", &self.pos, e);
         }
     }
 }
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Pixel {
     pub color: Color,
     pub position: Position,

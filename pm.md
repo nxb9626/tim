@@ -8,10 +8,20 @@ TODO:
     writing, but need to transfer the reads.
 
 - GUI side
-  - display text of any kind
-    - brew install sdl3 sdl3_ttf
-  - display a timestamp of any kind
+  - [x] display text of any kind
+    - `brew install sdl3 sdl3_ttf`
+  - [x] display a timestamp of any kind
+  - [x] debug menu view
+    - can be toggled with f3
+    - shows fps with ability to add more values
+  - [ ] timer component
+  - [ ] input system such that components can handle inputs themselves
 
-Font being committed to for the time being.
+        - [ ] mouse directs to the correct component
+        - [ ] keypresses direct to all components? just to the ones that subscribe? maybe a different mode?
+        - [ ] maybe a filter helper function given a position / hitbox / something
+              and have it be called if we want to slim down to certain things
+
+    Font being committed to for the time being.
 
 - https://ttfonts.net/font/17298_Futura.htm

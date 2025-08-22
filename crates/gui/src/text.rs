@@ -64,9 +64,13 @@ impl Text {
         let h: f32 = (&self.size).into();
         let w: f32 = (h * (self.val.chars().count()) as f32) * 0.45;
 
-        let (x, y) = match self.pos.relative {
+        let (x, y) = match &self.pos.relative {
             crate::PosOrientation::Center => (self.pos.x - w / 2.0, self.pos.y - h / 2.0),
             crate::PosOrientation::TopLeft => (self.pos.x, self.pos.y),
+            crate::PosOrientation::Parent(parent_position) => (
+                self.pos.x + parent_position.x,
+                self.pos.y + parent_position.y,
+            ),
         };
 
         //  Text fills this box
