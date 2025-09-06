@@ -1,5 +1,5 @@
 use chrono::{TimeDelta, Utc};
-use sdl3::{EventPump, VideoSubsystem, event::Event, keyboard::Keycode};
+use sdl3::{EventPump, VideoSubsystem, event::Event, keyboard::Scancode, mouse::MouseButton};
 
 use tokio::{
     sync::mpsc::{UnboundedReceiver, UnboundedSender},
@@ -9,10 +9,26 @@ use tokio::{
 use std::{collections::HashSet, time::Duration};
 
 use components::{COMPONENT_LAYERS, Component, DEBUGGER, debug::DbgVal};
-use shapes::{HEIGHT, Signal, View, WIDTH, draw_shapes};
+use shapes::{HEIGHT, View, WIDTH, draw_shapes};
 
 const MAX_FRAME_RATE: u64 = 240;
 const SCALE: f32 = 1.0;
+
+pub struct Signal {
+    keeb: KeebUpdate,
+    mouse: MouseUpdate,
+    events: Vec<Event>,
+}
+
+pub struct KeebUpdate {
+    old: HashSet<Scancode>,
+    new: HashSet<Scancode>,
+}
+
+pub struct MouseUpdate {
+    old: HashSet<MouseButton>,
+    new: HashSet<MouseButton>,
+}
 
 pub async fn vis(
     video_subsystem: VideoSubsystem,
@@ -46,8 +62,15 @@ pub async fn vis(
 
     'view: loop {
         if receiver.len() > 0 {
-            if let Some(Signal::Quit) = receiver.recv().await {
-                break 'view;
+            if let Some(Signal {
+                keeb,
+                mouse: _,
+                events: _,
+            }) = receiver.recv().await
+            {
+                if keeb.new.contains(&Scancode::Escape) {
+                    break 'view;
+                }
             };
         }
 
@@ -120,66 +143,115 @@ fn draw_components(font: &mut sdl3::ttf::Font, view: &mut View, o: &Component) {
 
 pub async fn input(mut events: EventPump, sender: UnboundedSender<Signal>) -> Result<(), ()> {
     let mut _start_timestamp = Utc::now();
-    let mut prev_buttons = HashSet::new();
+    let mut prev_mouse_buttons = HashSet::new();
+    let mut prev_keeb_buttons = HashSet::new();
+
     loop {
-        for event in events.poll_iter() {
-            match event {
-                Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                }
-                | Event::Quit { .. } => {
-                    if let Err(e) = sender.send(Signal::Quit) {
-                        panic!("Signal failed to quit: {e}")
-                    }
-                }
-                Event::KeyDown {
-                    keycode: Some(Keycode::Space),
-                    ..
-                } => {
-                    _start_timestamp = Utc::now();
-                }
-                Event::KeyDown {
-                    keycode: Some(Keycode::F3),
-                    ..
-                } => {
-                    let mut x = COMPONENT_LAYERS.lock().await;
-                    let layer2 = match x.get_mut(&DEBUGGER) {
-                        Some(layer2) => layer2,
-                        None => continue,
-                    };
-
-                    match layer2.get_mut("debugger") {
-                        Some(Component::Debugger(debugger)) => {
-                            debugger.toggle();
-                        }
-                        _ => {}
-                    };
-                }
-                _ => {}
-            }
+        let mut polled_events = Vec::new();
+        for e in events.poll_iter() {
+            polled_events.push(e);
         }
+        //     match event {
+        //         Event::KeyDown {
+        //             keycode: Some(Keycode::Escape),
+        //             ..
+        //         }
+        //         | Event::Quit { .. } => {
+        //             if let Err(e) = sender.send(Signal::) {
+        //                 panic!("Signal failed to quit: {e}")
+        //             }
+        //         }
+        //         Event::KeyDown {
+        //             keycode: Some(Keycode::Space),
+        //             ..
+        //         } => {
+        //             _start_timestamp = Utc::now();
+        //         }
+        //         Event::KeyDown {
+        //             keycode: Some(Keycode::F3),
+        //             ..
+        //         } => {
+        //             let mut x = COMPONENT_LAYERS.lock().await;
+        //             let layer2 = match x.get_mut(&DEBUGGER) {
+        //                 Some(layer2) => layer2,
+        //                 None => continue,
+        //             };
 
-        // get a mouse state
+        //             match layer2.get_mut("debugger") {
+        //                 Some(Component::Debugger(debugger)) => {
+        //                     debugger.toggle();
+        //                 }
+        //                 _ => {}
+        //             };
+        //         }
+        //         _ => {}
+        //     }
+        // }
+
+        // Create a set of pressed Keys.
+        let keebstate = events.keyboard_state();
+        let keeb_buttons = keebstate.pressed_scancodes().collect();
+
+        // Get the difference between the new and old sets.
+        let new_keeb_buttons = &keeb_buttons - &prev_keeb_buttons;
+        let old_keeb_buttons = &prev_keeb_buttons - &keeb_buttons;
+
         let state = events.mouse_state();
 
         // Create a set of pressed Keys.
-        let buttons = state.pressed_mouse_buttons().collect();
+        let mouse_buttons = state.pressed_mouse_buttons().collect();
 
         // Get the difference between the new and old sets.
-        let new_buttons = &buttons - &prev_buttons;
-        let old_buttons = &prev_buttons - &buttons;
+        let new_mouse_buttons = &mouse_buttons - &prev_mouse_buttons;
+        let old_mouse_buttons = &prev_mouse_buttons - &mouse_buttons;
 
-        if !new_buttons.is_empty() || !old_buttons.is_empty() {
+        // Create a set of pressed Keys.
+        // let events = events.poll_iter().collect();
+
+        // Get the difference between the new and old sets.
+        // let new_events = &events - &prev_events;
+        // let old_events = &prev_events - &events;
+
+        if !new_mouse_buttons.is_empty()
+            || !old_mouse_buttons.is_empty()
+            || !new_keeb_buttons.is_empty()
+            || !old_keeb_buttons.is_empty()
+            || !polled_events.is_empty()
+        {
             println!(
-                "X = {:?}, Y = {:?} : {:?} -> {:?}",
+                "X = {:?}, Y = {:?} : \n {:?} -> {:?} \n {:?} -> {:?} \n {:?}",
                 state.x(),
                 state.y(),
-                new_buttons,
-                old_buttons
+                &new_mouse_buttons,
+                &old_mouse_buttons,
+                &new_keeb_buttons,
+                &old_keeb_buttons,
+                &polled_events
             );
+
+            let keeb_update = KeebUpdate {
+                old: old_keeb_buttons,
+                new: new_keeb_buttons,
+            };
+
+            let mouse_update = MouseUpdate {
+                old: old_mouse_buttons,
+                new: new_mouse_buttons,
+            };
+
+            let input_update = Signal {
+                keeb: keeb_update,
+                mouse: mouse_update,
+                events: polled_events,
+            };
+
+            if let Err(e) = sender.send(input_update) {
+                panic!("Failed to send Input Update: {e}")
+            };
         }
-        prev_buttons = buttons;
+
+        prev_mouse_buttons = mouse_buttons;
+        prev_keeb_buttons = keeb_buttons;
         yield_now().await;
     }
 }

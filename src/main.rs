@@ -4,7 +4,7 @@ use components::{
     debug::Debugger,
 };
 use shapes::{
-    Color, H_CENTER, HEIGHT, Pos, PosOrientation, Position, Signal, W_CENTER, WIDTH,
+    Color, H_CENTER, HEIGHT, Pos, PosOrientation, Position, W_CENTER, WIDTH,
     shape::{Rectangle, Shapes},
     text::{Styling, Text},
 };
@@ -23,13 +23,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .event_pump()
         .expect("Failed to start sdl3 event (Input) system.");
 
-    let (quit_sender, quit_receiver) = tokio::sync::mpsc::unbounded_channel::<Signal>();
+    let (signal_sender, signal_receiver) = tokio::sync::mpsc::unbounded_channel::<vis::Signal>();
 
     // eventually need two way channels for events to go from filesystem to gui
     tokio::select! {
-        run_res = vis::vis(video_subsystem,  quit_receiver) => run_res.unwrap(), // just exit for now
+        run_res = vis::vis(video_subsystem,  signal_receiver) => run_res.unwrap(), // just exit for now
         update_res = physics() => update_res.unwrap(), // just exit for now
-        input = vis::input(event_pump,  quit_sender) => input.unwrap(), // just exit for now
+        input = vis::input(event_pump,  signal_sender) => input.unwrap(), // just exit for now
     };
 
     Ok(())

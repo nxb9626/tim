@@ -15,6 +15,11 @@ TODO:
     - can be toggled with f3
     - shows fps with ability to add more values
   - [ ] timer component
+  - [ ] button component
+    - a generic button
+    - two states: pressed and unpressed
+    - clicked, so mouse works
+    - needs to cause side effects
   - [ ] input system such that components can handle inputs themselves
 
         - [ ] mouse directs to the correct component
