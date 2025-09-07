@@ -39,7 +39,7 @@ impl Into<SdlColor> for Color {
 }
 
 // pub enum Signal {
-    // Quit,
+// Quit,
 // }
 
 // Any objects that need to be drawn need to be given this

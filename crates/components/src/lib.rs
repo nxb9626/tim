@@ -8,9 +8,9 @@ use std::sync::{Arc, LazyLock};
 use crate::crosshair::Crosshair;
 use crate::debug::Debugger;
 
+pub mod button;
 pub mod crosshair;
 pub mod debug;
-pub mod button;
 
 pub type Objects = Arc<Mutex<BTreeMap<usize, BTreeMap<String, Component>>>>;
 
