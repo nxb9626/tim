@@ -1,6 +1,6 @@
 use chrono::{TimeDelta, Utc};
-use input::{Key, get_input_receiver};
-use sdl3::VideoSubsystem;
+use input::{Key, Signal, get_input_receiver};
+use sdl3::{VideoSubsystem, event::Event};
 
 use tokio::{
     sync::mpsc::{UnboundedSender, unbounded_channel},
@@ -130,12 +130,32 @@ pub async fn spawn_input_loop(kill_sender: UnboundedSender<Quit>) {
     // need register that send
     tokio::task::spawn(async move {
         while let Some(signal) = recv.recv().await {
+            dbg!(&signal);
             if signal.is_this_key(&Key::Escape) {
                 if let Err(e) = kill_sender.send(Quit {}) {
                     dbg!(e);
                     panic!("literally can't quit")
                 }
             };
+
+            if signal.held_then_pressed(&Key::LGui, &Key::W) {
+                if let Err(e) = kill_sender.send(Quit {}) {
+                    dbg!(e);
+                    panic!("literally can't quit")
+                }
+            }
+
+            signal.events.iter().for_each(|a| match &a {
+                Event::Quit { .. } => {
+                    if let Err(e) = kill_sender.send(Quit {}) {
+                        dbg!(e);
+                        panic!("literally can't quit")
+                    }
+                }
+                _ => {}
+            });
+
+            // .contains(Event::Quit { .. })
             yield_now().await;
         }
     });

@@ -28,8 +28,9 @@ pub struct Signal {
 
 #[derive(Clone, Debug)]
 pub struct KeebUpdate {
-    pub old: HashSet<Scancode>,
-    pub new: HashSet<Scancode>,
+    pub old: HashSet<(Scancode, bool)>,
+    pub held: HashSet<Scancode>,
+    pub new: HashSet<(Scancode, bool)>,
 }
 
 #[derive(Clone, Debug)]
@@ -50,6 +51,7 @@ pub async fn input_loop(mut events: EventPump) -> Result<(), ()> {
     let mut _start_timestamp = Utc::now();
     let mut prev_mouse_buttons = HashSet::new();
     let mut prev_keeb_buttons = HashSet::new();
+    let mut held = HashSet::new();
 
     loop {
         let mut polled_events = Vec::new();
@@ -57,50 +59,20 @@ pub async fn input_loop(mut events: EventPump) -> Result<(), ()> {
             polled_events.push(e);
         }
 
-        //     match event {
-        //         Event::KeyDown {
-        //             keycode: Some(Keycode::Escape),
-        //             ..
-        //         }
-        //         | Event::Quit { .. } => {
-        //             if let Err(e) = sender.send(Signal::) {
-        //                 panic!("Signal failed to quit: {e}")
-        //             }
-        //         }
-        //         Event::KeyDown {
-        //             keycode: Some(Keycode::Space),
-        //             ..
-        //         } => {
-        //             _start_timestamp = Utc::now();
-        //         }
-        //         Event::KeyDown {
-        //             keycode: Some(Keycode::F3),
-        //             ..
-        //         } => {
-        //             let mut x = COMPONENT_LAYERS.lock().await;
-        //             let layer2 = match x.get_mut(&DEBUGGER) {
-        //                 Some(layer2) => layer2,
-        //                 None => continue,
-        //             };
-
-        //             match layer2.get_mut("debugger") {
-        //                 Some(Component::Debugger(debugger)) => {
-        //                     debugger.toggle();
-        //                 }
-        //                 _ => {}
-        //             };
-        //         }
-        //         _ => {}
-        //     }
-        // }
-
         // Create a set of pressed Keys.
         let keebstate = events.keyboard_state();
-        let keeb_buttons = keebstate.pressed_scancodes().collect();
+        let keeb_buttons = keebstate.scancodes().collect();
 
         // Get the difference between the new and old sets.
         let new_keeb_buttons = &keeb_buttons - &prev_keeb_buttons;
         let old_keeb_buttons = &prev_keeb_buttons - &keeb_buttons;
+
+        for (sc, pressed) in &new_keeb_buttons {
+            match pressed {
+                true => held.insert(sc.clone()),
+                false => held.remove(sc),
+            };
+        }
 
         let state = events.mouse_state();
 
@@ -137,6 +109,7 @@ pub async fn input_loop(mut events: EventPump) -> Result<(), ()> {
 
             let keeb_update = KeebUpdate {
                 old: old_keeb_buttons,
+                held: held.clone(),
                 new: new_keeb_buttons,
             };
 
@@ -165,9 +138,7 @@ pub async fn spread_signal(signal: Signal) {
     signals.iter_mut().for_each(|channel| {
         if let Err(e) = channel.send(signal.clone()) {
             dbg!("input channel send failed: {:?}", e);
-        } else {
-            dbg!("sent things");
-        }
+        };
     });
 }
 
@@ -185,15 +156,36 @@ impl Signal {
             }
         };
 
-        match self.keeb.new.iter().find(|a| a == &&scancode) {
+        match self
+            .keeb
+            .new
+            .iter()
+            .find(|(a, pressed)| (a, pressed) == (&&scancode, &true))
+        {
             Some(_) => return true,
             None => return false,
         }
     }
+
+    pub fn held_then_pressed(&self, key1: &Keycode, key2: &Keycode) -> bool {
+        let held = &self.keeb.held;
+        let new = &self.keeb.new;
+
+        let first = match keycode_to_scancode(key1) {
+            Some(f) => f,
+            None => return false,
+        };
+
+        let second = match keycode_to_scancode(key2) {
+            Some(s) => s,
+            None => return false,
+        };
+
+        held.contains(&first) && new.contains(&(second, true))
+    }
 }
 
 pub type Key = Keycode;
-
 fn keycode_to_scancode(key: &Keycode) -> Option<Scancode> {
     match key {
         Keycode::ScancodeMask => None,
@@ -263,7 +255,7 @@ fn keycode_to_scancode(key: &Keycode) -> Option<Scancode> {
         Keycode::T => None,
         Keycode::U => None,
         Keycode::V => None,
-        Keycode::W => None,
+        Keycode::W => Some(Scancode::W),
         Keycode::X => None,
         Keycode::Y => None,
         Keycode::Z => None,
@@ -407,7 +399,7 @@ fn keycode_to_scancode(key: &Keycode) -> Option<Scancode> {
         Keycode::LCtrl => None,
         Keycode::LShift => None,
         Keycode::LAlt => None,
-        Keycode::LGui => None,
+        Keycode::LGui => Some(Scancode::LGui),
         Keycode::RCtrl => None,
         Keycode::RShift => None,
         Keycode::RAlt => None,
