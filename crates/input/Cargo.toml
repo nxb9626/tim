@@ -1,10 +1,9 @@
 [package]
-name = "components"
+name = "input"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-
-shapes = { path = "../shapes" }
-input = { path = "../input" }
+sdl3 = { version = "0.14.27", features = ["ttf"] }
 tokio = { version = "1.45.0", features = ["full"] }
+chrono = "0.4.41"

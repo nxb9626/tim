@@ -1,10 +1,14 @@
 use std::collections::BTreeMap;
 
+use input::{Key, get_input_receiver};
 use shapes::{
     Color, PosOrientation, Position,
     shape::Shapes,
     text::{self, Text},
 };
+use tokio::task::yield_now;
+
+use crate::{COMPONENT_LAYERS, Component, DEBUGGER, debug};
 
 #[derive(Debug)]
 pub enum DbgVal {
@@ -19,16 +23,43 @@ pub struct Debugger {
     visible: bool,
 }
 
-impl Default for Debugger {
-    fn default() -> Self {
+pub async fn spawn_input_loop() {
+    // need send/recv
+    let mut recv = get_input_receiver().await;
+
+    // need register that send
+    tokio::task::spawn(async move {
+        while let Some(signal) = recv.recv().await {
+            if signal.is_this_key(&Key::F3) {
+                let mut cl = COMPONENT_LAYERS.lock().await;
+                let debug_layer = match cl.get_mut(&DEBUGGER) {
+                    Some(dbg) => dbg,
+                    _ => {
+                        panic!("debugger not initialized")
+                    }
+                };
+                match debug_layer.get_mut("debugger") {
+                    Some(Component::Debugger(debugger)) => {
+                        debugger.toggle();
+                    }
+                    _ => {}
+                };
+            };
+            yield_now().await;
+        }
+    });
+}
+
+impl Debugger {
+    // async create a new one
+    pub async fn new() -> Self {
+        spawn_input_loop().await;
+
         Self {
             vals: BTreeMap::new(),
             visible: true,
         }
     }
-}
-
-impl Debugger {
     /// build and it all out and give up the shapes needed to draw the debug menu
     pub fn get_shapes(&self) -> Vec<Shapes> {
         if !self.visible {
@@ -50,8 +81,8 @@ impl Debugger {
             let formatted_value = Text {
                 val: format!("{label}: {value}"),
                 pos: Position {
-                    x: x,
-                    y: y,
+                    x,
+                    y,
                     relative: PosOrientation::TopLeft,
                 },
                 size: text::TextSize::Tiny,

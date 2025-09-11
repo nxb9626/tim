@@ -149,6 +149,7 @@ dependencies = [
 name = "components"
 version = "0.1.0"
 dependencies = [
+ "input",
  "shapes",
  "tokio",
 ]
@@ -623,6 +624,15 @@ checksum = "cea70ddb795996207ad57735b50c5982d8844f38ba9ee5f1aedcfb708a2aa11e"
 dependencies = [
  "equivalent",
  "hashbrown",
+]
+
+[[package]]
+name = "input"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "sdl3",
+ "tokio",
 ]
 
 [[package]]
@@ -1433,6 +1443,7 @@ version = "0.0.2"
 dependencies = [
  "chrono",
  "components",
+ "input",
  "sdl3",
  "shapes",
  "storage",
@@ -1602,6 +1613,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "components",
+ "input",
  "sdl3",
  "shapes",
  "tokio",

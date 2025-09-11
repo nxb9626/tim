@@ -38,10 +38,6 @@ impl Into<SdlColor> for Color {
     }
 }
 
-// pub enum Signal {
-// Quit,
-// }
-
 // Any objects that need to be drawn need to be given this
 pub trait Draw {
     fn draw(&self, target: &mut View);

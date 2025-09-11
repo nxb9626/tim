@@ -8,6 +8,7 @@ storage = { path = "crates/storage" }
 shapes = { path = "crates/shapes" }
 vis = { path = "crates/vis" }
 components = { path = "crates/components" }
+input = { path = "crates/input" }
 time = { path = "crates/time" }
 tokio = { version = "1.45.0", features = ["full"] }
 chrono = "0.4.41"
