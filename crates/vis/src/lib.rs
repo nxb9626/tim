@@ -1,9 +1,9 @@
 use chrono::{TimeDelta, Utc};
-use input::{Key, Signal, get_input_receiver};
-use sdl3::{VideoSubsystem, keyboard::Scancode};
+use input::{Key, get_input_receiver};
+use sdl3::VideoSubsystem;
 
 use tokio::{
-    sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel},
+    sync::mpsc::{UnboundedSender, unbounded_channel},
     task::yield_now,
 };
 
@@ -18,9 +18,7 @@ const SCALE: f32 = 1.0;
 // signal used to kill the app
 pub struct Quit {}
 
-pub async fn vis(
-    video_subsystem: VideoSubsystem,
-) -> Result<(), ()> {
+pub async fn vis(video_subsystem: VideoSubsystem) -> Result<(), ()> {
     let window = video_subsystem
         .window("Mouse", WIDTH as u32, HEIGHT as u32)
         .position_centered()

@@ -8,7 +8,7 @@ use shapes::{
 };
 use tokio::task::yield_now;
 
-use crate::{COMPONENT_LAYERS, Component, DEBUGGER, debug};
+use crate::{COMPONENT_LAYERS, Component, DEBUGGER};
 
 #[derive(Debug)]
 pub enum DbgVal {

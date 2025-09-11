@@ -22,20 +22,20 @@ pub static SIGNAL_TARGETS: LazyLock<Mutex<Vec<UnboundedSender<Signal>>>> =
 #[derive(Clone, Debug)]
 pub struct Signal {
     pub keeb: KeebUpdate,
-    mouse: MouseUpdate,
+    pub mouse: MouseUpdate,
     pub events: Vec<Event>,
 }
 
 #[derive(Clone, Debug)]
 pub struct KeebUpdate {
-    _old: HashSet<Scancode>,
+    pub old: HashSet<Scancode>,
     pub new: HashSet<Scancode>,
 }
 
 #[derive(Clone, Debug)]
 pub struct MouseUpdate {
-    _old: HashSet<MouseButton>,
-    new: HashSet<MouseButton>,
+    pub old: HashSet<MouseButton>,
+    pub new: HashSet<MouseButton>,
 }
 
 pub async fn get_input_receiver() -> UnboundedReceiver<Signal> {
@@ -136,12 +136,12 @@ pub async fn input_loop(mut events: EventPump) -> Result<(), ()> {
             // );
 
             let keeb_update = KeebUpdate {
-                _old: old_keeb_buttons,
+                old: old_keeb_buttons,
                 new: new_keeb_buttons,
             };
 
             let mouse_update = MouseUpdate {
-                _old: old_mouse_buttons,
+                old: old_mouse_buttons,
                 new: new_mouse_buttons,
             };
 

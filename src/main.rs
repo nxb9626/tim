@@ -3,7 +3,6 @@ use components::{
     BACKGROUND, COMPONENT_LAYERS, Component, DEBUGGER, FOREGROUND, crosshair::Crosshair,
     debug::Debugger,
 };
-use input::Signal;
 use shapes::{
     Color, H_CENTER, HEIGHT, Pos, PosOrientation, Position, W_CENTER, WIDTH,
     shape::{Rectangle, Shapes},
