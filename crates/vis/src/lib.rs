@@ -1,5 +1,5 @@
 use chrono::{TimeDelta, Utc};
-use input::{Key, Signal, get_input_receiver};
+use input::{SC, get_input_receiver};
 use sdl3::{VideoSubsystem, event::Event};
 
 use tokio::{
@@ -130,15 +130,14 @@ pub async fn spawn_input_loop(kill_sender: UnboundedSender<Quit>) {
     // need register that send
     tokio::task::spawn(async move {
         while let Some(signal) = recv.recv().await {
-            dbg!(&signal);
-            if signal.is_this_key(&Key::Escape) {
+            if signal.is_this_key(&SC::Escape) {
                 if let Err(e) = kill_sender.send(Quit {}) {
                     dbg!(e);
                     panic!("literally can't quit")
                 }
             };
 
-            if signal.held_then_pressed(&Key::LGui, &Key::W) {
+            if signal.held_then_pressed(&SC::LGui, &SC::W) {
                 if let Err(e) = kill_sender.send(Quit {}) {
                     dbg!(e);
                     panic!("literally can't quit")

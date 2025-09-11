@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use input::{Key, get_input_receiver};
+use input::{SC, get_input_receiver};
 use shapes::{
     Color, PosOrientation, Position,
     shape::Shapes,
@@ -30,7 +30,7 @@ pub async fn spawn_input_loop() {
     // need register that send
     tokio::task::spawn(async move {
         while let Some(signal) = recv.recv().await {
-            if signal.is_this_key(&Key::F3) {
+            if signal.is_this_key(&SC::F3) {
                 let mut cl = COMPONENT_LAYERS.lock().await;
                 let debug_layer = match cl.get_mut(&DEBUGGER) {
                     Some(dbg) => dbg,
